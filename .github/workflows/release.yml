@@ -44,9 +44,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build release APK
-        run: flutter build apk --release
-
       - name: Determine next version based on commit message
         id: versioning
         run: |
@@ -78,9 +75,9 @@ jobs:
 
           # Set new version based on bump type
           if [ "$bump" = "major" ]; then
-            major=$((base_major + 1)); minor=base_minor; patch=base_patch
+            major=$((base_major + 1)); minor=0; patch=0
           elif [ "$bump" = "minor" ]; then
-            major=$base_major; minor=$((base_minor + 1)); patch=base_patch
+            major=$base_major; minor=$((base_minor + 1)); patch=0
           else
             major=$base_major; minor=$base_minor; patch=$((base_patch + 1))
           fi
@@ -110,6 +107,9 @@ jobs:
           git config --global user.email "actions@github.com"
           git tag $new_tag
           git push origin $new_tag
+
+      - name: Build release APK
+        run: flutter build apk --release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
