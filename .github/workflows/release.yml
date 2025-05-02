@@ -47,23 +47,50 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Get latest tag and bump version
-        id: get_tag
+      - name: Determine next version based on commit message
+        id: versioning
         run: |
-            latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
-            echo "Latest tag: $latest_tag"
-            
-            IFS='.' read -r major minor patch <<<"${latest_tag#v}"
+          # Get the latest tag, default to v0.0.0
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+
+          # Extract version parts
+          IFS='.' read -r major minor patch <<<"${latest_tag#v}"
+
+          # Get the latest commit message
+          commit_msg=$(git log -1 --pretty=%B)
+          echo "Commit message: $commit_msg"
+
+          # Default bump is patch
+          bump="patch"
+
+          if echo "$commit_msg" | grep -iq "BREAKING CHANGE\|major:"; then
+            bump="major"
+          elif echo "$commit_msg" | grep -iq "feat:"; then
+            bump="minor"
+          elif echo "$commit_msg" | grep -iq "fix:"; then
+            bump="patch"
+          fi
+
+          echo "Version bump type: $bump"
+
+          # Bump the version
+          if [ "$bump" = "major" ]; then
+            new_tag="v$((major + 1)).0.0"
+          elif [ "$bump" = "minor" ]; then
+            new_tag="v$major.$((minor + 1)).0"
+          else
             new_tag="v$major.$minor.$((patch + 1))"
-            
-            echo "RELEASE_TAG=$new_tag" >> $GITHUB_ENV
-            echo "Generated tag: $new_tag"
-            
-            # Create a new tag and push it to the repository
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git tag $new_tag
-            git push origin $new_tag
+          fi
+
+          echo "RELEASE_TAG=$new_tag" >> $GITHUB_ENV
+          echo "New version: $new_tag"
+
+          # Create and push the new tag
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag $new_tag
+          git push origin $new_tag
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
