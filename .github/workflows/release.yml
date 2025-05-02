@@ -13,11 +13,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # ✅ Flutter SDK with caching
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.2'  # Use the version your project requires
+          flutter-version: '3.29.2'
           cache: true
+
+      # ✅ Cache pub dependencies
+      - name: Cache pub packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      # ✅ Cache Gradle dependencies
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -26,7 +49,7 @@ jobs:
 
       - name: Get tag version
         id: vars
-        run: echo "RELEASE_TAG=v0.0.1" >> $GITHUB_ENV  # Or generate dynamically
+        run: echo "RELEASE_TAG=v0.0.1" >> $GITHUB_ENV  # You can make this dynamic
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
