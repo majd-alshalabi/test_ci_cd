@@ -56,12 +56,15 @@ jobs:
 
           # Extract version numbers
           IFS='.' read -r major minor patch <<<"${latest_tag#v}"
+          base_major=$major
+          base_minor=$minor
+          base_patch=$patch
 
           # Get latest commit message
           commit_msg=$(git log -1 --pretty=%B)
           echo "Commit message: $commit_msg"
 
-          # Decide bump type
+          # Determine bump type
           if echo "$commit_msg" | grep -iq "BREAKING CHANGE\|major:"; then
             bump="major"
           elif echo "$commit_msg" | grep -iq "feat:"; then
@@ -69,25 +72,31 @@ jobs:
           elif echo "$commit_msg" | grep -iq "fix:"; then
             bump="patch"
           else
-            bump="patch"  # Default
+            bump="patch"
           fi
           echo "Bump type: $bump"
 
-          # Bump and check for next available tag
-          while true; do
-            if [ "$bump" = "major" ]; then
-              major=$((major + 1)); minor=0; patch=0
-            elif [ "$bump" = "minor" ]; then
-              minor=$((minor + 1)); patch=0
-            else
-              patch=$((patch + 1))
-            fi
-            new_tag="v$major.$minor.$patch"
+          # Set new version based on bump type
+          if [ "$bump" = "major" ]; then
+            major=$((base_major + 1)); minor=base_minor; patch=base_patch
+          elif [ "$bump" = "minor" ]; then
+            major=$base_major; minor=$((base_minor + 1)); patch=base_patch
+          else
+            major=$base_major; minor=$base_minor; patch=$((base_patch + 1))
+          fi
 
-            # Check if tag exists
+          # Loop to find the next available tag at same bump level
+          while true; do
+            new_tag="v$major.$minor.$patch"
             if git ls-remote --tags origin | grep -q "refs/tags/$new_tag"; then
               echo "Tag $new_tag already exists. Bumping again..."
-              continue  # 🔁 Keep original bump type
+              if [ "$bump" = "major" ]; then
+                major=$((major + 1)); minor=0; patch=0
+              elif [ "$bump" = "minor" ]; then
+                minor=$((minor + 1)); patch=0
+              else
+                patch=$((patch + 1))
+              fi
             else
               break
             fi
@@ -101,7 +110,6 @@ jobs:
           git config --global user.email "actions@github.com"
           git tag $new_tag
           git push origin $new_tag
-      
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
