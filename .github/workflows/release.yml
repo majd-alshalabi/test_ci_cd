@@ -21,9 +21,8 @@ jobs:
           latest_tag=$(git tag --sort=-creatordate | head -n 1)
           latest_tag=${latest_tag:-v0.0.0}
           echo "Latest tag: $latest_tag"
-  
 
-  # Extract version numbers
+          # Extract version numbers
           IFS='.' read -r major minor patch <<<"${latest_tag#v}"
           base_major=$major
           base_minor=$minor
