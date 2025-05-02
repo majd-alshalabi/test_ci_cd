@@ -1,4 +1,4 @@
-name: Create Release on Push to Master
+name: Release APK
 
 on:
   push:
@@ -6,37 +6,35 @@ on:
       - master
 
 jobs:
-  create_release:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get Latest Tag
-        id: get_tag
-        run: |
-          git fetch --tags
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "latest_tag=$TAG" >> $GITHUB_OUTPUT
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'  # Use the version your project requires
 
-      - name: Bump Version and Create Tag
-        id: tag
-        run: |
-          OLD_TAG=${{ steps.get_tag.outputs.latest_tag }}
-          echo "Previous tag: $OLD_TAG"
-          VERSION=$(echo $OLD_TAG | sed 's/v//' | awk -F. '{printf("v%d.%d.%d", $1, $2, $3+1)}')
-          echo "New version: $VERSION"
-          git tag $VERSION
-          git push origin $VERSION
-          echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Get tag version
+        id: vars
+        run: echo "RELEASE_TAG=v0.0.1" >> $GITHUB_ENV  # Or generate dynamically
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag_name }}
-          name: Release ${{ steps.tag.outputs.tag_name }}
-          draft: false
-          prerelease: false
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Release ${{ env.RELEASE_TAG }}
+          body: |
+            Automated release with APK
+          files: build/app/outputs/flutter-apk/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
