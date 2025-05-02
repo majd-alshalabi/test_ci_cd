@@ -25,6 +25,6 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text("Testing CI CD 2")));
+    return const Scaffold(body: Center(child: Text("Testing CI CD 3")));
   }
 }
